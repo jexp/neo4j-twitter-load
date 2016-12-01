@@ -1,0 +1,85 @@
+== Simple Neo4j Load Generator for 3.1 Causal Cluster
+
+This is a load generator for a *Neo4j 3.1 Causal Cluster* with _core_ servers and _read-replicas_.
+It uses *read-only-* and *read-write-sessions*, *bookmarks* for read-your-own-writes and supports `bolt+routing://` urls for smart routing.
+
+This load generator is a minimal variant of the comprehensive test suites we run internally in our quality testing.
+
+=== Build & Run
+
+You can run this load generator with:
+
+----
+mvn compile exec:java -Dexec.mainClass=neo4j.load.twitter.LoadGenerator number-of-threads bolt[+routing]://host:port max-operations-or-minus-one
+----
+
+Or first build
+
+----
+mvn clean install
+----
+
+and then run
+
+----
+java -jar target/neo4j-twitter-load-1.0-SNAPSHOT-jar-with-dependencies.jar 32 bolt+routing://host:port 10000000
+----
+
+During the run, each thread prints the throughput every 10k transactions.
+
+After the run, the recorded latency (in Millis) is reported as a histogram (using hdr-histogram, to draw a chart use http://hdrhistogram.github.io/HdrHistogram/plotFiles.html[this service]).
+
+Here is a sample session from my local machine:
+
+----
+java -jar target/neo4j-twitter-load-1.0-SNAPSHOT-jar-with-dependencies.jar 2 bolt://localhost 100000
+
+Usage: java -jar neo4j-twitter-load-1.0-SNAPSHOT-jar-with-dependencies.jar concurrency bolt+routing://host:port maxOperations-or-minus-one
+Initialize with 1000 names.
+Finished warmup 1000 operations in 1 seconds.
+1. TX/S: 500
+0. TX/S: 500
+1. TX/S: 465
+0. TX/S: 465
+1. TX/S: 476
+0. TX/S: 476
+1. TX/S: 476
+0. TX/S: 476
+0. TX/S: 471
+1. TX/S: 471
+       Value     Percentile TotalCount 1/(1-Percentile)
+
+     208.127 0.000000000000          1           1.00
+    1396.735 0.500000000000      50488           2.00
+    2693.119 0.750000000000      75704           4.00
+    3596.287 0.875000000000      88317           8.00
+    4997.119 0.937500000000      94630          16.00
+    6983.679 0.968750000000      97782          32.00
+    9543.679 0.984375000000      99355          64.00
+   12509.183 0.992187500000     100145         128.00
+   16236.543 0.996093750000     100539         256.00
+   19562.495 0.998046875000     100735         512.00
+   23609.343 0.999023437500     100834        1024.00
+   26427.391 0.999511718750     100883        2048.00
+   29163.519 0.999755859375     100908        4096.00
+   29835.263 0.999877929688     100920        8192.00
+   30179.327 0.999938964844     100927       16384.00
+   30441.471 0.999969482422     100929       32768.00
+   30523.391 0.999984741211     100933       65536.00
+   30523.391 1.000000000000     100933
+#[Mean    =     2075.971, StdDeviation   =     2229.175]
+#[Max     =   174850.047, Total count    =       100932]
+#[Buckets =           24, SubBuckets     =         2048]
+----
+
+=== Operations
+
+It will execute 4 different operations with different probabilities
+
+1. create an account: create a new user with provided handle. (1%)
+2. publish a tweet: disseminate a <140 character message. (15%)
+3. read stream: get a time ordered list of 10 tweets from the followed users. (76%)
+4. get a recommendation: receive a solicitation of potentially interesting users to follow.	 (8%)
+5. -> follow a user: subscribe to the tweets of another user. (->30%)
+
+I took the ideas from http://web.archive.org/web/20160811165359/https://thinkaurelius.com/2012/08/06/titan-provides-real-time-big-graph-data/[Aurelius Titan Benchmark]
