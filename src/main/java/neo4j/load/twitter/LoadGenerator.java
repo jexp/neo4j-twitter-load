@@ -144,7 +144,7 @@ public class LoadGenerator {
         void execute(Transaction tx, String name, Object value);
     }
     enum Operations implements Action {
-        CREATE_USER(1,true) {
+        CREATE_USER(1,true,false) {
             public void execute(Transaction tx, String name, Object value) {
                 tx.run(
                         "CREATE (u:User {name:{name},created:timestamp()}) " +
@@ -154,7 +154,7 @@ public class LoadGenerator {
                                 "CREATE (u)-[:FOLLOWS {time:timestamp()}]->(f)",
                         parameters("name", name, "friends", value)).consume();
             }
-        }, TWEET(15,true) {
+        }, TWEET(15,true,false) {
             public void execute(Transaction tx, String name, Object value) {
                 tx.run("MATCH (u:User {name:{name}})\n" +
                                 "CREATE (u)-[:TWEETS]->(t:Tweet {text:{text},time:timestamp()})\n" +
@@ -163,7 +163,7 @@ public class LoadGenerator {
                                 "CREATE (f)-[:STREAM]->(t);",
                         parameters("name", name, "text", "A Tweet by " + name + " at " + new Date())).consume();
             }
-        }, READ_TWEETS(76,false) {
+        }, READ_TWEETS(76,false,false) {
             public void execute(Transaction tx, String name, Object value) {
                 int count = 0;
                 StatementResult result = tx.run("MATCH (u:User {name:{name}})-[:STREAM]->(t:Tweet)\n" +
@@ -174,7 +174,7 @@ public class LoadGenerator {
                     count++;
                 }
             }
-        }, FOLLOW_RECOMMENDATION(8,true) {
+        }, FOLLOW_RECOMMENDATION(8,true,true) {
             public void execute(Transaction tx, String name, Object value) {
                 StatementResult result = tx.run("MATCH (u:User {name:{name}})-[:FOLLOWS]->(f)\n" +
                                 "WITH u,f ORDER BY rand() LIMIT 20\n" +
@@ -201,8 +201,9 @@ public class LoadGenerator {
 
         public final int chance;
         public final boolean writes;
+        public final boolean ryow;
         public final char marker = name().charAt(0);
-        Operations(int chance, boolean writes) { this.chance = chance; this.writes = writes; }
+        Operations(int chance, boolean writes, boolean ryow) { this.chance = chance; this.writes = writes; this.ryow = ryow; }
 
         public static Operations selectAndRun(int chance, Session writeSession, Session readSession, Users users) {
             if ((chance -= CREATE_USER.chance) < 0) {
@@ -217,14 +218,16 @@ public class LoadGenerator {
         }
 
         private static Operations run(Operations ops, String user, Object param, Session session, Users users) {
+            if (user == null) {
+                user = users.randomUser();
+            }
             String bookmark = null;
             Transaction tx;
-            if (user != null) {
-                tx = session.beginTransaction();
-            } else {
-                user = users.randomUser();
+            if (ops.ryow) {
                 bookmark = users.bookmarkFor(user);
                 tx = session.beginTransaction(bookmark);
+            } else {
+                tx = session.beginTransaction();
             }
             long start = System.nanoTime();
             try {
