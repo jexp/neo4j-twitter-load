@@ -80,6 +80,13 @@ Finished warmup 1000 operations in 1 seconds.
 #[Buckets =           24, SubBuckets     =         2048]
 ----
 
+=== Run in docker
+You can use a docker image to run this load test by executing:
+
+----
+docker run -e CONCURRENCY=2 -e NEO4J_BOLT_URL=bolt://neo4j:test@neo4jhost 100000 -e MAX_OPERATIONS=100000 jexp/neo4j-twitter-load:latest
+----
+
 === Operations
 
 It will execute 4 different operations with different probabilities
