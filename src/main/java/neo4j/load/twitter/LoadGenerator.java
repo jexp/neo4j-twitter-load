@@ -3,7 +3,11 @@ package neo4j.load.twitter;
 import org.HdrHistogram.Histogram;
 import org.neo4j.driver.v1.*;
 
-import java.util.*;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.util.Collections;
+import java.util.Date;
+import java.util.List;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
@@ -27,13 +31,13 @@ public class LoadGenerator {
     }
 
     public static void main(String[] args) throws InterruptedException {
-        System.err.println("Usage: java -jar neo4j-twitter-load-1.0-SNAPSHOT-jar-with-dependencies.jar concurrency bolt+routing://host:port maxOperations-or-minus-one");
+        System.err.println("Usage: java -jar neo4j-twitter-load-1.0-SNAPSHOT-jar-with-dependencies.jar concurrency bolt+routing://user:pass@host:port maxOperations-or-minus-one");
         int concurrency = args.length > 0 ? Integer.parseInt(args[0]) : Runtime.getRuntime().availableProcessors();
-        String uri = args.length > 1 ? args[1] : "bolt://localhost";
+        String environmentUrl = System.getenv("NEO4J_BOLT_URL");
+        String uri = args.length > 1 ? args[1] : environmentUrl != null ? environmentUrl : "bolt://neo4j:test@localhost";
         int total = args.length > 2 ? Integer.parseInt(args[2]) : -1;
-        String password = "test";
         LoadGenerator loadGenerator = new LoadGenerator();
-        loadGenerator.start(concurrency, uri, password, total);
+        loadGenerator.start(concurrency, uri, total);
         loadGenerator.stop();
     }
 
@@ -41,10 +45,10 @@ public class LoadGenerator {
         histogram.outputPercentileDistribution(System.out, 1,1000.0);
     }
 
-    private void start(int concurrency, String uri, String password, int total) throws InterruptedException {
+    private void start(int concurrency, String uri, int total) throws InterruptedException {
         int maxOps = total / concurrency;
         Users users = new Users();
-        AuthToken auth = AuthTokens.basic("neo4j", password);
+        AuthToken auth = authTokens(uri);
         CountDownLatch latch = new CountDownLatch(concurrency);
         try (Driver driver = GraphDatabase.driver(uri, auth)) {
             initialize(driver,users);
@@ -53,6 +57,18 @@ public class LoadGenerator {
                 new Thread(() -> {generateLoad(thread, driver,users,maxOps);latch.countDown();}).start();
             }
             latch.await();
+        }
+    }
+
+    private AuthToken authTokens(String uri) {
+        try {
+            URI url = new URI(uri);
+            String userInfo = url.getUserInfo();
+            if (userInfo == null || userInfo.isEmpty()) return AuthTokens.none();
+            String[] parts = userInfo.split(":");
+            return AuthTokens.basic(parts[0], parts[1]);
+        } catch (URISyntaxException e) {
+            throw new RuntimeException("Error parsing URL "+uri,e);
         }
     }
 

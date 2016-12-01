@@ -10,7 +10,7 @@ This load generator is a minimal variant of the comprehensive test suites we run
 You can run this load generator with:
 
 ----
-mvn compile exec:java -Dexec.mainClass=neo4j.load.twitter.LoadGenerator number-of-threads bolt[+routing]://host:port max-operations-or-minus-one
+mvn compile exec:java -Dexec.mainClass=neo4j.load.twitter.LoadGenerator number-of-threads bolt[+routing]://user:pass@host:port max-operations-or-minus-one
 ----
 
 Or first build
@@ -22,8 +22,16 @@ mvn clean install
 and then run
 
 ----
-java -jar target/neo4j-twitter-load-1.0-SNAPSHOT-jar-with-dependencies.jar 32 bolt+routing://host:port 10000000
+java -jar target/neo4j-twitter-load-1.0-SNAPSHOT-jar-with-dependencies.jar 32 bolt+routing://user:pass@host:port 10000000
 ----
+
+If you run it without parameters it defaults to:
+
+----
+java -jar target/neo4j-twitter-load-1.0-SNAPSHOT-jar-with-dependencies.jar processors bolt://neo4j:test@localhost -1
+----
+
+You can use the `NEO4J_BOLT_URL` environment variable.
 
 During the run, each thread prints the throughput every 10k transactions.
 
@@ -32,9 +40,9 @@ After the run, the recorded latency (in Millis) is reported as a histogram (usin
 Here is a sample session from my local machine:
 
 ----
-java -jar target/neo4j-twitter-load-1.0-SNAPSHOT-jar-with-dependencies.jar 2 bolt://localhost 100000
+java -jar target/neo4j-twitter-load-1.0-SNAPSHOT-jar-with-dependencies.jar 2 bolt://neo4j:test@localhost 100000
 
-Usage: java -jar neo4j-twitter-load-1.0-SNAPSHOT-jar-with-dependencies.jar concurrency bolt+routing://host:port maxOperations-or-minus-one
+Usage: java -jar neo4j-twitter-load-1.0-SNAPSHOT-jar-with-dependencies.jar concurrency bolt+routing://user:pass@host:port maxOperations-or-minus-one
 Initialize with 1000 names.
 Finished warmup 1000 operations in 1 seconds.
 1. TX/S: 500
