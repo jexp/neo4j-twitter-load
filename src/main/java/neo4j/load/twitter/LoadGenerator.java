@@ -42,7 +42,7 @@ public class LoadGenerator {
     }
 
     private void stop() {
-        histogram.outputPercentileDistribution(System.out, 1,1000.0);
+        histogram.outputPercentileDistribution(System.out, 1,(double)TimeUnit.MILLISECONDS.toNanos(1));
     }
 
     private void start(int concurrency, String uri, int total) throws InterruptedException {
@@ -235,7 +235,7 @@ public class LoadGenerator {
             } finally {
                 tx.close();
             }
-            long delta = System.nanoTime() - start; // TODO HDR
+            long delta = System.nanoTime() - start;
             histogram.recordValue(delta);
             String newBookmark = session.lastBookmark();
             if (newBookmark!= null && !newBookmark.equals(bookmark)) {
