@@ -50,7 +50,8 @@ public class LoadGenerator {
         Users users = new Users();
         AuthToken auth = authTokens(uri);
         CountDownLatch latch = new CountDownLatch(concurrency);
-        try (Driver driver = GraphDatabase.driver(uri, auth)) {
+        Config config = Config.build().withMaxIdleSessions(concurrency * 2).toConfig();
+        try (Driver driver = GraphDatabase.driver(uri, auth, config)) {
             initialize(driver,users);
             for (int i = 0; i < concurrency; i++) {
                 int thread = i;
